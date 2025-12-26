@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quarto 4x5 Fixo</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: 'Courier New', monospace;
+    }
+
+    #ui {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #ff3333;
+      text-shadow: 0 0 10px #ff0000;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 20px;
+      border: 2px solid #ff3333;
+      cursor: pointer;
+      z-index: 10;
+      width: 80%;
+      max-width: 500px;
+    }
+
+    h1 {
+      font-size: 24px;
+      text-transform: uppercase;
+    }
+
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 4px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+
+    #loading {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: lime;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="ui">
+    <h1>O Quarto (4m x 5m)</h1>
+    <p>Clique para entrar</p>
+    <p style="font-size: 12px">WASD: Andar | Mouse: Olhar</p>
+  </div>
+  <div id="crosshair"></div>
+  <div id="loading">Carregando modelos...</div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    // --- CONFIGURAÇÃO DOS MÓVEIS (Ajustados para caber no 4x5) ---
+    // Limites do quarto: X entre -2.0 e 2.0 | Z entre -2.5 e 2.5
+    const furnitureConfig = [
+      // Cama (Canto Fundo Direito)
+      { file: 'bed.glb', pos: { x: 1.5, y: 0, z: -1.0 }, rot: { x: 0, y: 6, z: 0 }, scale: 1.3 },
+      // { file: 'messy_bed_low_poly.glb', pos: { x: 1.1, y: 0.4, z: -1.5 }, rot: { x: 0, y: 0, z: 0 }, scale: 0.1 },
+
+      // Mesa (Parede Direita, mais pra frente)
+      { file: 'writing_desk_1.glb', pos: { x: 1.7, y: 0.75, z: 1.5 }, rot: { x: 0, y: -1.57, z: 0 }, scale: 0.4 },
+      { file: 'office_chair.glb', pos: { x: 1.0, y: 0, z: 1.5 }, rot: { x: 0, y: 1.57, z: 0 }, scale: 1.0 },
+
+      // Detalhes da Mesa
+      { file: 'cassette_tape_-_modeling_exercise.glb', pos: { x: 1.7, y: 0.75, z: 1.2 }, rot: { x: 0, y: 0, z: 0 }, scale: 0.1 },
+      { file: 'belgian_waffles_draft.glb', pos: { x: 1.7, y: 0.75, z: 1.8 }, rot: { x: 0, y: 0, z: 0 }, scale: 0.1 },
+
+      // Janela e Cortinas (Parede Fundo Z = -2.5)
+      { file: 'curtains.glb', pos: { x: 0, y: 1.0, z: -2.4 }, rot: { x: 0, y: 0, z: 0 }, scale: 0.6 },
+
+      // Armário (Recuo Esquerdo X = -2.5)
+      { file: 'wardrobe_14722-22.glb', pos: { x: -2.4, y: 0, z: 0.5 }, rot: { x: 0, y: 1.57, z: 0 }, scale: 0.9 },
+
+      // Detalhes Chão/Parede
+      // { file: 'simple_string_lights.glb', pos: { x: -1.9, y: 2.5, z: 0 }, rot: { x: 0, y: 0, z: 1.57 }, scale: 1.5 },
+      // { file: 'starfish.glb', pos: { x: -1.8, y: 0.8, z: 1.5 }, rot: { x: 1.57, y: 0, z: 0 }, scale: 0.5 },
+
+      // Sobremesa (Prateleira ou mesa)
+      { file: 'clockwork_sundae_-_dessert.glb', pos: { x: 1.7, y: 0.75, z: 1.5 }, rot: { x: 0, y: 0, z: 0 }, scale: 0.1 }
+    ];
+
+    let camera, scene, renderer, controls;
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let prevTime = performance.now();
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const loader = new GLTFLoader();
+
+    // DIMENSÕES FIXAS DO QUARTO
+    const ROOM_W = 4.0; // X vai de -2 a 2
+    const ROOM_D = 5.0; // Z vai de -2.5 a 2.5
+    const WALL_H = 2.8;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x100505, 0.12);
+      scene.background = new THREE.Color(0x050000);
+
+      camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 100);
+      // Jogador nasce perto da porta (X=-1.5, Z=2.0) olhando pro fundo
+      camera.position.set(-1.0, 1.6, 2.0);
+      camera.rotation.y = -0.5;
+
+      setupLights();
+      buildSolidRoom(); // Constrói as 4 paredes fixas
+      loadFurniture();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      document.body.appendChild(renderer.domElement);
+
+      setupControls();
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function setupLights() {
+      const ambient = new THREE.AmbientLight(0x404040, 0.4);
+      scene.add(ambient);
+
+      // Luz da Janela (Fundo)
+      const windowLight = new THREE.SpotLight(0x6666ff, 40);
+      windowLight.position.set(0, 2.5, -2.4);
+      windowLight.target.position.set(0, 0, 0);
+      windowLight.castShadow = true;
+      scene.add(windowLight); scene.add(windowLight.target);
+
+      // Luz da Mesa (Direita)
+      const deskLight = new THREE.PointLight(0xffaa00, 20, 5);
+      deskLight.position.set(1.5, 1.8, 1.5);
+      deskLight.castShadow = true;
+      scene.add(deskLight);
+
+      // Luz do Armário (Esquerda)
+      const closetLight = new THREE.PointLight(0xff0000, 10, 4);
+      closetLight.position.set(-2.0, 2.0, 0);
+      scene.add(closetLight);
+    }
+
+    function buildSolidRoom() {
+      const matFloor = new THREE.MeshStandardMaterial({ color: 0x221111, roughness: 0.7 });
+      const matWall = new THREE.MeshStandardMaterial({ color: 0x665555, roughness: 0.9 });
+      const matCeiling = new THREE.MeshStandardMaterial({ color: 0x111111 });
+
+      // Chão e Teto
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), matFloor);
+      floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), matCeiling);
+      ceiling.rotation.x = Math.PI / 2; ceiling.position.y = WALL_H; scene.add(ceiling);
+
+      // Função cria parede
+      const createWall = (w, h, d, x, y, z) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matWall);
+        m.position.set(x, y, z);
+        m.castShadow = true; m.receiveShadow = true;
+        scene.add(m);
+      };
+
+      // --- PAREDES FIXAS ---
+
+      // 1. FUNDO (Janela) - Z = -2.5
+      // Fazendo buraco da janela com 4 pedaços
+      createWall(1.2, WALL_H, 0.1, -1.4, WALL_H / 2, -2.5); // Esq
+      createWall(1.2, WALL_H, 0.1, 1.4, WALL_H / 2, -2.5);  // Dir
+      createWall(1.6, 0.8, 0.1, 0, 2.4, -2.5); // Topo
+      createWall(1.6, 0.8, 0.1, 0, 0.4, -2.5); // Base
+      // Vidro
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.2), new THREE.MeshStandardMaterial({ color: 0x001133, transparent: true, opacity: 0.3 }));
+      glass.position.set(0, 1.4, -2.5); scene.add(glass);
+
+      // 2. FRENTE (Porta Banheiro) - Z = +2.5
+      // Porta à direita (para quem olha para a parede, que é a esquerda de quem entra)
+      createWall(2.8, WALL_H, 0.1, 0.6, WALL_H / 2, 2.5); // Parede maior
+      createWall(1.2, 0.8, 0.1, -1.4, 2.4, 2.5); // Topo Porta
+
+      // 3. DIREITA (Sólida) - X = +2.0
+      createWall(0.1, WALL_H, ROOM_D, 2.05, WALL_H / 2, 0);
+
+      // 4. ESQUERDA (Porta Entrada + Recuo Armário) - X = -2.0
+      // Porta entrada perto do fundo (Z positivo)
+      createWall(0.1, WALL_H, 1.5, -2.05, WALL_H / 2, 1.75);
+      // Parede perto da janela
+      createWall(0.1, WALL_H, 1.5, -2.05, WALL_H / 2, -1.75);
+
+      // O RECUO (A caixa do armário)
+      createWall(0.8, WALL_H, 0.1, -2.4, WALL_H / 2, 1.0); // Lateral recuo
+      createWall(0.8, WALL_H, 0.1, -2.4, WALL_H / 2, -1.0); // Lateral recuo
+      createWall(0.1, WALL_H, 2.0, -2.85, WALL_H / 2, 0);   // Fundo recuo
+    }
+
+    function loadFurniture() {
+      furnitureConfig.forEach(item => {
+        loader.load('./models/' + item.file, (gltf) => {
+          const model = gltf.scene;
+          model.position.set(item.pos.x, item.pos.y, item.pos.z);
+          model.rotation.set(item.rot.x, item.rot.y, item.rot.z);
+          model.scale.set(item.scale, item.scale, item.scale);
+          model.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+          scene.add(model);
+        }, undefined, (e) => console.error(`Erro: ${item.file}`));
+      });
+      createLetter(new THREE.Vector3(1.7, 0.72, 1.5)); // Carta na mesa
+    }
+
+    function createLetter(pos) {
+      const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fffaf0'; ctx.fillRect(0, 0, 512, 512);
+      ctx.fillStyle = '#330000'; ctx.font = 'bold 30px "Courier New"'; ctx.textAlign = 'center';
+      ctx.fillText("CONFIDENCIAL", 256, 60);
+      ctx.font = '24px "Courier New"';
+      ctx.fillText("Para minha amiga,", 256, 120);
+      ctx.fillText("Parceira de crimes", 256, 160);
+      ctx.font = 'bold 40px "Courier New"';
+      ctx.fillText("FELIZ ANIVERSÁRIO!", 256, 400);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      const letter = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshStandardMaterial({ map: tex }));
+      letter.rotation.x = -Math.PI / 2;
+      letter.rotation.z = -1.57; // Virada pra cadeira
+      letter.position.copy(pos);
+      scene.add(letter);
+    }
+
+    function setupControls() {
+      controls = new PointerLockControls(camera, document.body);
+      document.getElementById('ui').addEventListener('click', () => controls.lock());
+      const onKeyDown = (e) => { switch (e.code) { case 'KeyW': moveForward = true; break; case 'KeyA': moveLeft = true; break; case 'KeyS': moveBackward = true; break; case 'KeyD': moveRight = true; break; } };
+      const onKeyUp = (e) => { switch (e.code) { case 'KeyW': moveForward = false; break; case 'KeyA': moveLeft = false; break; case 'KeyS': moveBackward = false; break; case 'KeyD': moveRight = false; break; } };
+      document.addEventListener('keydown', onKeyDown); document.addEventListener('keyup', onKeyUp);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = performance.now();
+      if (controls.isLocked) {
+        const delta = (time - prevTime) / 1000;
+        velocity.x -= velocity.x * 10.0 * delta; velocity.z -= velocity.z * 10.0 * delta;
+        direction.z = Number(moveForward) - Number(moveBackward); direction.x = Number(moveRight) - Number(moveLeft); direction.normalize();
+        const speed = 40.0;
+        if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+        controls.moveRight(-velocity.x * delta); controls.moveForward(-velocity.z * delta);
+
+        // COLISÃO SIMPLES: Mantém o jogador dentro do 4x5
+        // Paredes estão em X=2 e Z=2.5. Buffer de 0.5m.
+        camera.position.x = Math.max(-1.5, Math.min(1.5, camera.position.x));
+        camera.position.z = Math.max(-2.0, Math.min(2.0, camera.position.z));
+      }
+      prevTime = time; renderer.render(scene, camera);
+    }
+  </script>
+</body>
+
+</html>

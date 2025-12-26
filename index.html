@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Experiência 3D imersiva de exploração de ambiente">
+  <meta name="theme-color" content="#100505">
+  <title>Quarto 3D - Experiência Imersiva</title>
+  <style>
+    :root {
+      --color-bg: #100505;
+      --color-primary: #ff3333;
+      --color-primary-glow: #ff0000;
+      --color-secondary: #33ff33;
+      --color-text: #aaaaaa;
+      --color-text-dark: #666666;
+      --color-overlay: rgba(0, 0, 0, 0.95);
+      --color-control-bg: rgba(255, 255, 255, 0.1);
+      --color-control-border: rgba(255, 255, 255, 0.3);
+      --color-control-handle: rgba(255, 255, 255, 0.5);
+      --spacing-xs: 8px;
+      --spacing-sm: 15px;
+      --spacing-md: 20px;
+      --spacing-lg: 40px;
+      --transition-fast: 0.2s;
+      --transition-normal: 0.5s;
+      --z-base: 5;
+      --z-ui: 9;
+      --z-modal: 10;
+      --z-overlay: 100;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--color-bg);
+      font-family: 'Courier New', Courier, monospace;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    /* Loading & UI Container */
+    .ui-container {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: var(--color-overlay);
+      z-index: var(--z-modal);
+      transition: opacity var(--transition-normal);
+    }
+
+    .ui-container.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ui-container.removed {
+      display: none;
+    }
+
+    /* Button Styles */
+    .btn {
+      color: var(--color-primary);
+      text-shadow: 0 0 10px var(--color-primary-glow);
+      background: transparent;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border: 2px solid var(--color-primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 24px;
+      text-transform: uppercase;
+      border-radius: 5px;
+      transition: background var(--transition-fast);
+      display: none;
+    }
+
+    .btn.visible {
+      display: block;
+    }
+
+    .btn:hover,
+    .btn:active,
+    .btn:focus-visible {
+      background: rgba(255, 51, 51, 0.1);
+      outline: none;
+    }
+
+    .btn:focus-visible {
+      box-shadow: 0 0 0 3px rgba(255, 51, 51, 0.3);
+    }
+
+    /* Loading Bar */
+    .loading-bar-container {
+      width: min(300px, 80%);
+      height: 4px;
+      background: #333;
+      margin-top: var(--spacing-md);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .loading-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0%;
+      height: 100%;
+      background: var(--color-secondary);
+      transition: width var(--transition-fast);
+    }
+
+    .loading-text {
+      color: var(--color-secondary);
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    /* Crosshair */
+    .crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      mix-blend-mode: difference;
+      z-index: var(--z-base);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .crosshair.visible {
+      opacity: 1;
+    }
+
+    /* Instructions */
+    .instructions {
+      color: var(--color-text);
+      font-size: 12px;
+      margin-top: var(--spacing-sm);
+      text-align: center;
+      max-width: 80%;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .instructions.visible {
+      display: block;
+    }
+
+    /* Mobile Controls */
+    .mobile-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: var(--z-ui);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .mobile-controls.visible {
+      opacity: 1;
+    }
+
+    .joystick-area {
+      position: absolute;
+      bottom: 100px;
+      left: 40px;
+      width: 120px;
+      height: 120px;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .joystick-base {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: var(--color-control-bg);
+      border-radius: 50%;
+      border: 2px solid var(--color-control-border);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .joystick-handle {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background: var(--color-control-handle);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease-out;
+      will-change: transform;
+    }
+
+    .look-area {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 60%;
+      height: 100%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    /* Mobile UI Buttons */
+    .mobile-ui {
+      position: fixed;
+      top: var(--spacing-md);
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      z-index: var(--z-overlay);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .mobile-ui.visible {
+      opacity: 1;
+    }
+
+    .mobile-btn {
+      pointer-events: auto;
+      padding: 10px var(--spacing-md);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border: 1px solid var(--color-text-dark);
+      border-radius: 5px;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .mobile-btn:active {
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    /* Error Message */
+    .error-message {
+      color: var(--color-primary);
+      text-align: center;
+      padding: var(--spacing-md);
+      max-width: 80%;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .btn {
+        padding: var(--spacing-sm) 30px;
+        font-size: 18px;
+      }
+
+      .instructions {
+        font-size: 11px;
+        padding: 0 var(--spacing-md);
+      }
+
+      .crosshair {
+        width: 8px;
+        height: 8px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .joystick-area {
+        bottom: 80px;
+        left: 30px;
+        width: 100px;
+        height: 100px;
+      }
+
+      .joystick-base {
+        width: 80px;
+        height: 80px;
+      }
+
+      .joystick-handle {
+        width: 40px;
+        height: 40px;
+      }
+
+      .mobile-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 12px;
+      }
+    }
+
+    /* Performance Optimization */
+    .joystick-handle,
+    .crosshair {
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+
+    /* Accessibility */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Loading Animation */
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .loading-text {
+      animation: pulse 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ui-container" id="uiContainer" role="dialog" aria-modal="true" aria-labelledby="loadingText">
+    <p class="loading-text" id="loadingText">Carregando recursos... 0%</p>
+    <div class="loading-bar-container" id="loadingBarContainer">
+      <div class="loading-bar" id="loadingBar" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+        aria-valuemax="100"></div>
+    </div>
+
+    <button class="btn" id="startBtn" aria-label="Entrar no ambiente 3D">ENTRAR NO QUARTO</button>
+
+    <p class="instructions" id="desktopInstructions">
+      <kbd>WASD</kbd>: Andar | <kbd>Mouse</kbd>: Olhar | <kbd>ESC</kbd>: Sair
+    </p>
+    <p class="instructions" id="mobileInstructions">
+      Joystick: Andar | Toque direita: Olhar | Toque em ENTRAR para começar
+    </p>
+
+    <p class="error-message" id="errorMessage"></p>
+  </div>
+
+  <div class="crosshair" id="crosshair" aria-hidden="true"></div>
+
+  <div class="mobile-controls" id="mobileControls" aria-label="Controles de movimento">
+    <div class="joystick-area" id="joystickArea" role="slider" aria-label="Joystick de movimento">
+      <div class="joystick-base"></div>
+      <div class="joystick-handle"></div>
+    </div>
+    <div class="look-area" id="lookArea" aria-label="Área de controle de câmera"></div>
+  </div>
+
+  <nav class="mobile-ui" id="mobileUI" aria-label="Controles da interface">
+    <button class="mobile-btn" id="exitBtn" aria-label="Sair da experiência">SAIR</button>
+    <button class="mobile-btn" id="lookBtn" aria-label="Alternar controle de câmera">OLHAR: ON</button>
+  </nav>
+
+  <div class="visually-hidden" role="status" aria-live="polite" id="announcements"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+    // ============================================================================
+    // CONFIGURATION & CONSTANTS
+    // ============================================================================
+    const CONFIG = Object.freeze({
+      ROOM: {
+        WIDTH: 5.2,
+        DEPTH: 6.0,
+        HEIGHT: 3.0
+      },
+      PLAYER: {
+        HEIGHT: 1.6,
+        RADIUS: 0.5,
+        SPEED_DESKTOP: 6.0,
+        SPEED_MOBILE: 3.0
+      },
+      RENDERING: {
+        FOV: 65,
+        NEAR: 0.1,
+        FAR: 100,
+        PIXEL_RATIO_MOBILE: 1.5,
+        PIXEL_RATIO_DESKTOP: 2,
+        SHADOW_MAP_SIZE: 1024
+      },
+      LIGHTING: {
+        AMBIENT_INTENSITY_MOBILE: 0.6,
+        AMBIENT_INTENSITY_DESKTOP: 0.4,
+        DIRECTIONAL_INTENSITY_MOBILE: 0.6,
+        DIRECTIONAL_INTENSITY_DESKTOP: 0.8,
+        POINT_INTENSITY_MOBILE: 0.8,
+        POINT_INTENSITY_DESKTOP: 1.2
+      },
+      CONTROLS: {
+        JOYSTICK_MAX_DISTANCE: 40,
+        JOYSTICK_THRESHOLD: 15,
+        LOOK_SENSITIVITY: 0.003,
+        DAMPING_FACTOR: 10.0
+      },
+      FURNITURE: Object.freeze([
+        { file: 'bed.glb', pos: [1.25, 0, -1.0], rot: [0, 3.15, 0], scale: 1.3 },
+        { file: 'writing_desk_1.glb', pos: [1.7, 0.75, 1.5], rot: [0, -1.57, 0], scale: 0.4 },
+        { file: 'office_chair.glb', pos: [1.0, 0, 1.5], rot: [0, 1.57, 0], scale: 1.0 },
+        { file: 'cassette_tape_-_modeling_exercise.glb', pos: [1.7, 0.9, 1.2], rot: [0, 0, 0], scale: 0.1 },
+        { file: 'belgian_waffles_draft.glb', pos: [1.7, 0.85, 1.8], rot: [0, 0, 0], scale: 0.1 },
+        { file: 'curtains.glb', pos: [0, 1.0, -2.4], rot: [0, 0, 0], scale: 0.6 },
+        { file: 'wardrobe_14722-22.glb', pos: [-2.4, 0, 0.5], rot: [0, 1.57, 0], scale: 0.9 },
+        { file: 'clockwork_sundae_-_dessert.glb', pos: [1.7, 0.85, 1.5], rot: [0, 0, 0], scale: 0.1 }
+      ])
+    });
+
+    // ============================================================================
+    // DEVICE DETECTION
+    // ============================================================================
+    class DeviceDetector {
+      static isMobile() {
+        return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+          || window.innerWidth <= 768;
+      }
+
+      static supportsWebGL() {
+        try {
+          const canvas = document.createElement('canvas');
+          return !!(window.WebGLRenderingContext &&
+            (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+        } catch (e) {
+          return false;
+        }
+      }
+    }
+
+    // ============================================================================
+    // UI MANAGER
+    // ============================================================================
+    class UIManager {
+      constructor() {
+        this.elements = {
+          uiContainer: document.getElementById('uiContainer'),
+          startBtn: document.getElementById('startBtn'),
+          loadingBar: document.getElementById('loadingBar'),
+          loadingBarContainer: document.getElementById('loadingBarContainer'),
+          loadingText: document.getElementById('loadingText'),
+          crosshair: document.getElementById('crosshair'),
+          mobileControls: document.getElementById('mobileControls'),
+          mobileUI: document.getElementById('mobileUI'),
+          exitBtn: document.getElementById('exitBtn'),
+          lookBtn: document.getElementById('lookBtn'),
+          desktopInstructions: document.getElementById('desktopInstructions'),
+          mobileInstructions: document.getElementById('mobileInstructions'),
+          errorMessage: document.getElementById('errorMessage'),
+          announcements: document.getElementById('announcements')
+        };
+
+        this.isMobile = DeviceDetector.isMobile();
+        this.initializeUI();
+      }
+
+      initializeUI() {
+        const instructionsElement = this.isMobile
+          ? this.elements.mobileInstructions
+          : this.elements.desktopInstructions;
+
+        instructionsElement.classList.add('visible');
+      }
+
+      updateLoadingProgress(percent) {
+        this.elements.loadingBar.style.width = `${percent}%`;
+        this.elements.loadingBar.setAttribute('aria-valuenow', percent);
+        this.elements.loadingText.textContent = `Carregando modelos... ${percent}%`;
+      }
+
+      showStartButton() {
+        this.elements.loadingText.textContent = "Carregamento Completo!";
+        this.elements.loadingBarContainer.style.display = 'none';
+        this.elements.startBtn.classList.add('visible');
+        this.announce('Carregamento completo. Pressione o botão para iniciar.');
+      }
+
+      hideUI() {
+        this.elements.uiContainer.classList.add('hidden');
+        setTimeout(() => {
+          this.elements.uiContainer.classList.add('removed');
+        }, 500);
+      }
+
+      showUI(buttonText = "VOLTAR AO QUARTO") {
+        this.elements.uiContainer.classList.remove('removed');
+        setTimeout(() => {
+          this.elements.uiContainer.classList.remove('hidden');
+        }, 10);
+        this.elements.startBtn.textContent = buttonText;
+      }
+
+      showCrosshair() {
+        this.elements.crosshair.classList.add('visible');
+      }
+
+      hideCrosshair() {
+        this.elements.crosshair.classList.remove('visible');
+      }
+
+      showMobileControls() {
+        this.elements.mobileControls.classList.add('visible');
+        this.elements.mobileUI.classList.add('visible');
+      }
+
+      hideMobileControls() {
+        this.elements.mobileControls.classList.remove('visible');
+        this.elements.mobileUI.classList.remove('visible');
+      }
+
+      showError(message) {
+        this.elements.errorMessage.textContent = message;
+        this.elements.errorMessage.classList.add('visible');
+        this.announce(message);
+      }
+
+      announce(message) {
+        this.elements.announcements.textContent = message;
+      }
+
+      updateLookButtonState(enabled) {
+        this.elements.lookBtn.textContent = `OLHAR: ${enabled ? 'ON' : 'OFF'}`;
+      }
+    }
+
+    // ============================================================================
+    // INPUT MANAGER
+    // ============================================================================
+    class InputManager {
+      constructor(isMobile) {
+        this.isMobile = isMobile;
+        this.moveState = {
+          forward: false,
+          backward: false,
+          left: false,
+          right: false
+        };
+
+        // Joystick state
+        this.joystick = {
+          active: false,
+          touchId: null,
+          origin: { x: 0, y: 0 },
+          value: { x: 0, y: 0 }
+        };
+
+        // Look state
+        this.look = {
+          active: false,
+          touchId: null,
+          lastX: 0,
+          lastY: 0,
+          enabled: true
+        };
+
+        this.callbacks = {};
+      }
+
+      on(event, callback) {
+        this.callbacks[event] = callback;
+      }
+
+      emit(event, data) {
+        if (this.callbacks[event]) {
+          this.callbacks[event](data);
+        }
+      }
+
+      setupDesktopControls() {
+        const onKey = (e, pressed) => {
+          const keyMap = {
+            'KeyW': 'forward',
+            'KeyA': 'left',
+            'KeyS': 'backward',
+            'KeyD': 'right'
+          };
+
+          if (keyMap[e.code]) {
+            e.preventDefault();
+            this.moveState[keyMap[e.code]] = pressed;
+          }
+        };
+
+        document.addEventListener('keydown', (e) => onKey(e, true));
+        document.addEventListener('keyup', (e) => onKey(e, false));
+      }
+
+      setupMobileControls(joystickArea, lookArea, joystickHandle) {
+        // Joystick controls
+        joystickArea.addEventListener('touchstart', (e) => this.handleJoystickStart(e));
+        joystickArea.addEventListener('touchmove', (e) => this.handleJoystickMove(e, joystickHandle));
+        joystickArea.addEventListener('touchend', (e) => this.handleJoystickEnd(e, joystickHandle));
+
+        // Look controls
+        lookArea.addEventListener('touchstart', (e) => this.handleLookStart(e));
+        lookArea.addEventListener('touchmove', (e) => this.handleLookMove(e));
+        lookArea.addEventListener('touchend', (e) => this.handleLookEnd(e));
+      }
+
+      handleJoystickStart(e) {
+        e.preventDefault();
+        if (this.joystick.active || !e.touches.length) return;
+
+        const touch = e.touches[0];
+        this.joystick.touchId = touch.identifier;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        this.joystick.origin.x = rect.left + rect.width / 2;
+        this.joystick.origin.y = rect.top + rect.height / 2;
+        this.joystick.active = true;
+      }
+
+      handleJoystickMove(e, handle) {
+        if (!this.joystick.active) return;
+
+        for (let touch of e.touches) {
+          if (touch.identifier === this.joystick.touchId) {
+            e.preventDefault();
+
+            const deltaX = touch.clientX - this.joystick.origin.x;
+            const deltaY = touch.clientY - this.joystick.origin.y;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            const maxDistance = CONFIG.CONTROLS.JOYSTICK_MAX_DISTANCE;
+
+            if (distance > maxDistance) {
+              const angle = Math.atan2(deltaY, deltaX);
+              this.joystick.value.x = Math.cos(angle) * maxDistance;
+              this.joystick.value.y = Math.sin(angle) * maxDistance;
+            } else {
+              this.joystick.value.x = deltaX;
+              this.joystick.value.y = deltaY;
+            }
+
+            // Update visual
+            handle.style.transform = `translate(${this.joystick.value.x}px, ${this.joystick.value.y}px)`;
+
+            // Update move state
+            const threshold = CONFIG.CONTROLS.JOYSTICK_THRESHOLD;
+            this.moveState.forward = this.joystick.value.y < -threshold;
+            this.moveState.backward = this.joystick.value.y > threshold;
+            this.moveState.left = this.joystick.value.x < -threshold;
+            this.moveState.right = this.joystick.value.x > threshold;
+
+            break;
+          }
+        }
+      }
+
+      handleJoystickEnd(e, handle) {
+        if (!this.joystick.active) return;
+
+        for (let touch of e.changedTouches) {
+          if (touch.identifier === this.joystick.touchId) {
+            this.resetJoystick(handle);
+            break;
+          }
+        }
+      }
+
+      resetJoystick(handle) {
+        this.joystick.active = false;
+        this.joystick.touchId = null;
+        this.joystick.value = { x: 0, y: 0 };
+
+        handle.style.transform = 'translate(-50%, -50%)';
+
+        this.moveState.forward = false;
+        this.moveState.backward = false;
+        this.moveState.left = false;
+        this.moveState.right = false;
+      }
+
+      handleLookStart(e) {
+        if (!this.look.enabled || !e.touches.length) return;
+
+        const touch = e.touches[0];
+        this.look.touchId = touch.identifier;
+        this.look.lastX = touch.clientX;
+        this.look.lastY = touch.clientY;
+        this.look.active = true;
+      }
+
+      handleLookMove(e) {
+        if (!this.look.active || !this.look.enabled) return;
+
+        for (let touch of e.touches) {
+          if (touch.identifier === this.look.touchId) {
+            e.preventDefault();
+
+            const deltaX = touch.clientX - this.look.lastX;
+            const deltaY = touch.clientY - this.look.lastY;
+
+            this.emit('look', { deltaX, deltaY });
+
+            this.look.lastX = touch.clientX;
+            this.look.lastY = touch.clientY;
+
+            break;
+          }
+        }
+      }
+
+      handleLookEnd(e) {
+        if (!this.look.active) return;
+
+        for (let touch of e.changedTouches) {
+          if (touch.identifier === this.look.touchId) {
+            this.look.active = false;
+            break;
+          }
+        }
+      }
+
+      toggleLookEnabled() {
+        this.look.enabled = !this.look.enabled;
+        return this.look.enabled;
+      }
+
+      getMoveState() {
+        return this.moveState;
+      }
+    }
+
+    // ============================================================================
+    // SCENE MANAGER
+    // ============================================================================
+    class SceneManager {
+      constructor(isMobile) {
+        this.isMobile = isMobile;
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+
+        this.initialize();
+      }
+
+      initialize() {
+        // Scene
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x100505);
+        this.scene.fog = new THREE.FogExp2(0x100505, 0.08);
+
+        // Camera
+        this.camera = new THREE.PerspectiveCamera(
+          CONFIG.RENDERING.FOV,
+          window.innerWidth / window.innerHeight,
+          CONFIG.RENDERING.NEAR,
+          CONFIG.RENDERING.FAR
+        );
+        this.camera.position.set(-1.0, CONFIG.PLAYER.HEIGHT, 2.0);
+        this.camera.rotation.y = -0.5;
+
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({
+          antialias: !this.isMobile,
+          powerPreference: "high-performance",
+          alpha: false
+        });
+
+        const pixelRatio = this.isMobile
+          ? Math.min(window.devicePixelRatio, CONFIG.RENDERING.PIXEL_RATIO_MOBILE)
+          : Math.min(window.devicePixelRatio, CONFIG.RENDERING.PIXEL_RATIO_DESKTOP);
+
+        this.renderer.setPixelRatio(pixelRatio);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
+
+        if (!this.isMobile) {
+          this.renderer.shadowMap.enabled = true;
+          this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+
+        document.body.appendChild(this.renderer.domElement);
+
+        // Lights
+        this.setupLights();
+
+        // Room
+        this.createRoom();
+
+        // Window resize
+        window.addEventListener('resize', () => this.onWindowResize(), { passive: true });
+      }
+
+      setupLights() {
+        const ambientIntensity = this.isMobile
+          ? CONFIG.LIGHTING.AMBIENT_INTENSITY_MOBILE
+          : CONFIG.LIGHTING.AMBIENT_INTENSITY_DESKTOP;
+
+        const ambient = new THREE.AmbientLight(0x404040, ambientIntensity);
+        this.scene.add(ambient);
+
+        // Directional light
+        const dirIntensity = this.isMobile
+          ? CONFIG.LIGHTING.DIRECTIONAL_INTENSITY_MOBILE
+          : CONFIG.LIGHTING.DIRECTIONAL_INTENSITY_DESKTOP;
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, dirIntensity);
+        dirLight.position.set(0, 10, 0);
+
+        if (!this.isMobile) {
+          dirLight.castShadow = true;
+          dirLight.shadow.camera.left = -4;
+          dirLight.shadow.camera.right = 4;
+          dirLight.shadow.camera.top = 4;
+          dirLight.shadow.camera.bottom = -4;
+          dirLight.shadow.bias = -0.0005;
+          dirLight.shadow.mapSize.width = CONFIG.RENDERING.SHADOW_MAP_SIZE;
+          dirLight.shadow.mapSize.height = CONFIG.RENDERING.SHADOW_MAP_SIZE;
+        }
+
+        this.scene.add(dirLight);
+
+        // Point light (bulb)
+        const pointIntensity = this.isMobile
+          ? CONFIG.LIGHTING.POINT_INTENSITY_MOBILE
+          : CONFIG.LIGHTING.POINT_INTENSITY_DESKTOP;
+
+        const bulbLight = new THREE.PointLight(0xffaa00, pointIntensity, 10);
+        bulbLight.position.set(0, 2.8, 0);
+        bulbLight.decay = 2;
+        this.scene.add(bulbLight);
+      }
+
+      createRoom() {
+        const { WIDTH, DEPTH, HEIGHT } = CONFIG.ROOM;
+        const roomGroup = new THREE.Group();
+
+        const floorMat = new THREE.MeshStandardMaterial({
+          color: 0x333333,
+          roughness: 0.8,
+          metalness: 0.2
+        });
+
+        const wallMat = new THREE.MeshStandardMaterial({
+          color: 0xcccccc,
+          roughness: 0.9,
+          metalness: 0.0,
+          side: THREE.DoubleSide
+        });
+
+        // Floor
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, DEPTH), floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        if (!this.isMobile) floor.receiveShadow = true;
+        roomGroup.add(floor);
+
+        // Walls
+        const walls = [
+          { w: WIDTH, h: HEIGHT, x: 0, y: HEIGHT / 2, z: -DEPTH / 2, rotY: 0 },
+          { w: WIDTH, h: HEIGHT, x: 0, y: HEIGHT / 2, z: DEPTH / 2, rotY: Math.PI },
+          { w: DEPTH, h: HEIGHT, x: -WIDTH / 2 + 0.73, y: HEIGHT / 2, z: 0, rotY: Math.PI / 2 },
+          { w: DEPTH, h: HEIGHT, x: WIDTH / 2, y: HEIGHT / 2, z: 0, rotY: -Math.PI / 2 }
+        ];
+
+        walls.forEach(({ w, h, x, y, z, rotY }) => {
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat);
+          mesh.position.set(x, y, z);
+          mesh.rotation.y = rotY;
+          if (!this.isMobile) {
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+          }
+          roomGroup.add(mesh);
+        });
+
+        this.scene.add(roomGroup);
+      }
+
+      onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      render() {
+        this.renderer.render(this.scene, this.camera);
+      }
+
+      getScene() {
+        return this.scene;
+      }
+
+      getCamera() {
+        return this.camera;
+      }
+
+      getRenderer() {
+        return this.renderer;
+      }
+    }
+
+    // ============================================================================
+    // ASSET LOADER
+    // ============================================================================
+    class AssetLoader {
+      constructor(scene, isMobile, onProgress, onComplete, onError) {
+        this.scene = scene;
+        this.isMobile = isMobile;
+        this.onProgress = onProgress;
+        this.onComplete = onComplete;
+        this.onError = onError;
+
+        this.manager = null;
+        this.loader = null;
+      }
+
+      load() {
+        this.manager = new THREE.LoadingManager();
+
+        this.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+          const percent = Math.round((itemsLoaded / itemsTotal) * 100);
+          this.onProgress(percent);
+        };
+
+        this.manager.onLoad = () => {
+          this.onComplete();
+        };
+
+        this.manager.onError = (url) => {
+          this.onError(`Erro ao carregar: ${url}`);
+        };
+
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+
+        this.loader = new GLTFLoader(this.manager);
+        this.loader.setDRACOLoader(dracoLoader);
+
+        const maxAnisotropy = this.isMobile ? 1 : 4;
+
+        CONFIG.FURNITURE.forEach(item => {
+          this.loader.load(
+            `./models/${item.file}`,
+            (gltf) => this.onModelLoaded(gltf, item, maxAnisotropy),
+            undefined,
+            (error) => console.error(`Erro ao carregar ${item.file}:`, error)
+          );
+        });
+      }
+
+      onModelLoaded(gltf, itemConfig, maxAnisotropy) {
+        const model = gltf.scene;
+        model.position.set(...itemConfig.pos);
+        model.rotation.set(...itemConfig.rot);
+        model.scale.setScalar(itemConfig.scale);
+
+        model.traverse((obj) => {
+          if (obj.isMesh) {
+            if (!this.isMobile) {
+              obj.castShadow = true;
+              obj.receiveShadow = true;
+            }
+            if (obj.material?.map) {
+              obj.material.map.anisotropy = maxAnisotropy;
+            }
+          }
+        });
+
+        this.scene.add(model);
+      }
+    }
+
+    // ============================================================================
+    // PLAYER CONTROLLER
+    // ============================================================================
+    class PlayerController {
+      constructor(camera, isMobile, controls = null) {
+        this.camera = camera;
+        this.isMobile = isMobile;
+        this.controls = controls;
+
+        this.velocity = new THREE.Vector3();
+        this.direction = new THREE.Vector3();
+        this.prevTime = performance.now();
+      }
+
+      update(moveState) {
+        const time = performance.now();
+        const delta = (time - this.prevTime) / 1000;
+
+        // Damping
+        this.velocity.x -= this.velocity.x * CONFIG.CONTROLS.DAMPING_FACTOR * delta;
+        this.velocity.z -= this.velocity.z * CONFIG.CONTROLS.DAMPING_FACTOR * delta;
+
+        // Calculate direction
+        this.direction.z = Number(moveState.forward) - Number(moveState.backward);
+        this.direction.x = Number(moveState.right) - Number(moveState.left);
+        this.direction.normalize();
+
+        const speed = this.isMobile ? CONFIG.PLAYER.SPEED_MOBILE : CONFIG.PLAYER.SPEED_DESKTOP;
+
+        if (moveState.forward || moveState.backward) {
+          this.velocity.z -= this.direction.z * speed * delta;
+        }
+        if (moveState.left || moveState.right) {
+          this.velocity.x -= this.direction.x * speed * delta;
+        }
+
+        // Move player
+        if (!this.isMobile && this.controls) {
+          this.controls.moveRight(-this.velocity.x * delta);
+          this.controls.moveForward(-this.velocity.z * delta);
+        } else if (this.isMobile) {
+          const forwardVector = new THREE.Vector3(0, 0, -1);
+          const rightVector = new THREE.Vector3(1, 0, 0);
+
+          forwardVector.applyQuaternion(this.camera.quaternion);
+          rightVector.applyQuaternion(this.camera.quaternion);
+
+          forwardVector.y = 0;
+          rightVector.y = 0;
+
+          forwardVector.normalize();
+          rightVector.normalize();
+
+          this.camera.position.add(forwardVector.multiplyScalar(-this.velocity.z * delta));
+          this.camera.position.add(rightVector.multiplyScalar(-this.velocity.x * delta));
+        }
+
+        this.checkCollisions();
+        this.prevTime = time;
+      }
+
+      checkCollisions() {
+        const limitX = (CONFIG.ROOM.WIDTH / 2 - 0.73) - CONFIG.PLAYER.RADIUS;
+        const limitZ = (CONFIG.ROOM.DEPTH / 2) - CONFIG.PLAYER.RADIUS;
+
+        this.camera.position.x = Math.max(-limitX, Math.min(limitX, this.camera.position.x));
+        this.camera.position.z = Math.max(-limitZ, Math.min(limitZ, this.camera.position.z));
+        this.camera.position.y = CONFIG.PLAYER.HEIGHT;
+      }
+
+      updateLook(deltaX, deltaY) {
+        this.camera.rotation.y -= deltaX * CONFIG.CONTROLS.LOOK_SENSITIVITY;
+        this.camera.rotation.x -= deltaY * CONFIG.CONTROLS.LOOK_SENSITIVITY;
+        this.camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.camera.rotation.x));
+      }
+    }
+
+    // ============================================================================
+    // MAIN APPLICATION
+    // ============================================================================
+    class Application {
+      constructor() {
+        this.isMobile = DeviceDetector.isMobile();
+        this.isRunning = false;
+
+        this.ui = null;
+        this.scene = null;
+        this.input = null;
+        this.player = null;
+        this.controls = null;
+
+        this.init();
+      }
+
+      async init() {
+        // Check WebGL support
+        if (!DeviceDetector.supportsWebGL()) {
+          this.showError('WebGL não é suportado neste navegador.');
+          return;
+        }
+
+        try {
+          // Initialize UI
+          this.ui = new UIManager();
+
+          // Initialize Scene
+          this.scene = new SceneManager(this.isMobile);
+
+          // Initialize Input
+          this.input = new InputManager(this.isMobile);
+
+          if (!this.isMobile) {
+            this.controls = new PointerLockControls(
+              this.scene.getCamera(),
+              document.body
+            );
+            this.setupDesktopControls();
+          } else {
+            this.setupMobileControls();
+          }
+
+          // Initialize Player
+          this.player = new PlayerController(
+            this.scene.getCamera(),
+            this.isMobile,
+            this.controls
+          );
+
+          // Setup look callback
+          this.input.on('look', ({ deltaX, deltaY }) => {
+            this.player.updateLook(deltaX, deltaY);
+          });
+
+          // Load assets
+          this.loadAssets();
+
+          // Start animation loop
+          this.animate();
+
+          // Prevent unwanted behaviors
+          this.setupEventListeners();
+
+        } catch (error) {
+          console.error('Initialization error:', error);
+          this.showError('Erro ao inicializar a aplicação.');
+        }
+      }
+
+      loadAssets() {
+        const loader = new AssetLoader(
+          this.scene.getScene(),
+          this.isMobile,
+          (percent) => this.ui.updateLoadingProgress(percent),
+          () => this.ui.showStartButton(),
+          (error) => this.showError(error)
+        );
+
+        loader.load();
+      }
+
+      setupDesktopControls() {
+        this.input.setupDesktopControls();
+
+        this.ui.elements.startBtn.addEventListener('click', () => {
+          this.controls.lock();
+        });
+
+        this.controls.addEventListener('lock', () => {
+          this.isRunning = true;
+          this.ui.hideUI();
+          this.ui.showCrosshair();
+        });
+
+        this.controls.addEventListener('unlock', () => {
+          this.isRunning = false;
+          this.ui.showUI('VOLTAR AO JOGO');
+          this.ui.hideCrosshair();
+        });
+      }
+
+      setupMobileControls() {
+        const joystickArea = this.ui.elements.mobileControls.querySelector('.joystick-area');
+        const lookArea = this.ui.elements.mobileControls.querySelector('.look-area');
+        const joystickHandle = this.ui.elements.mobileControls.querySelector('.joystick-handle');
+
+        this.input.setupMobileControls(joystickArea, lookArea, joystickHandle);
+
+        this.ui.elements.startBtn.addEventListener('click', () => {
+          this.isRunning = true;
+          this.ui.hideUI();
+          this.ui.showCrosshair();
+          this.ui.showMobileControls();
+        });
+
+        this.ui.elements.exitBtn.addEventListener('click', () => {
+          this.isRunning = false;
+          this.ui.showUI('VOLTAR AO QUARTO');
+          this.ui.hideCrosshair();
+          this.ui.hideMobileControls();
+        });
+
+        this.ui.elements.lookBtn.addEventListener('click', () => {
+          const enabled = this.input.toggleLookEnabled();
+          this.ui.updateLookButtonState(enabled);
+        });
+      }
+
+      setupEventListeners() {
+        // Prevent context menu
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Prevent touch zoom
+        document.addEventListener('gesturestart', (e) => e.preventDefault());
+        document.addEventListener('gesturechange', (e) => e.preventDefault());
+
+        // Prevent double-tap zoom on buttons
+        document.addEventListener('touchstart', (e) => {
+          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'CANVAS') {
+            e.preventDefault();
+          }
+        }, { passive: false });
+      }
+
+      animate() {
+        requestAnimationFrame(() => this.animate());
+
+        if (this.isRunning) {
+          this.player.update(this.input.getMoveState());
+        }
+
+        this.scene.render();
+      }
+
+      showError(message) {
+        this.ui.showError(message);
+        console.error(message);
+      }
+    }
+
+    // ============================================================================
+    // INITIALIZE APPLICATION
+    // ============================================================================
+    const app = new Application();
+  </script>
+</body>
+
+</html>
