@@ -4,31 +4,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Experiência 3D imersiva de exploração de ambiente">
-  <meta name="theme-color" content="#100505">
-  <title>Quarto 3D - Experiência Imersiva</title>
+  <meta name="description" content="Uma experiência especial para Yas">
+  <meta name="theme-color" content="#2a0b43">
+  <title>Yas</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet">
   <style>
     :root {
-      --color-bg: #100505;
-      --color-primary: #ff3333;
-      --color-primary-glow: #ff0000;
-      --color-secondary: #33ff33;
-      --color-text: #aaaaaa;
-      --color-text-dark: #666666;
-      --color-overlay: rgba(0, 0, 0, 0.95);
-      --color-control-bg: rgba(255, 255, 255, 0.1);
-      --color-control-border: rgba(255, 255, 255, 0.3);
-      --color-control-handle: rgba(255, 255, 255, 0.5);
+      --color-bg: #1a0b2e;
+      --color-primary: #ff6bcb;
+      --color-primary-glow: #ff47b5;
+      --color-secondary: #6ee7ff;
+      --color-accent: #c792ea;
+      --color-text: #e2dfe6;
+      --color-text-dark: #a8a4b3;
+      --color-overlay: rgba(26, 11, 46, 0.95);
+      --color-control-bg: rgba(255, 255, 255, 0.15);
+      --color-control-border: rgba(255, 255, 255, 0.4);
+      --color-control-handle: rgba(255, 255, 255, 0.7);
+      --color-heart: #ff4081;
       --spacing-xs: 8px;
       --spacing-sm: 15px;
       --spacing-md: 20px;
       --spacing-lg: 40px;
-      --transition-fast: 0.2s;
-      --transition-normal: 0.5s;
+      --transition-fast: 0.3s;
+      --transition-normal: 0.6s;
+      --transition-slow: 1s;
       --z-base: 5;
       --z-ui: 9;
       --z-modal: 10;
       --z-overlay: 100;
+      --border-radius: 20px;
     }
 
     * {
@@ -40,8 +47,8 @@
     body {
       margin: 0;
       overflow: hidden;
-      background-color: var(--color-bg);
-      font-family: 'Courier New', Courier, monospace;
+      background: linear-gradient(135deg, #1a0b2e 0%, #2d1b69 100%);
+      font-family: 'Poppins', sans-serif;
       user-select: none;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
@@ -49,7 +56,6 @@
       touch-action: none;
     }
 
-    /* Loading & UI Container */
     .ui-container {
       position: fixed;
       inset: 0;
@@ -57,9 +63,10 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background: var(--color-overlay);
+      background: linear-gradient(135deg, rgba(42, 11, 67, 0.95) 0%, rgba(85, 26, 139, 0.95) 100%);
       z-index: var(--z-modal);
       transition: opacity var(--transition-normal);
+      padding: var(--spacing-md);
     }
 
     .ui-container.hidden {
@@ -71,48 +78,101 @@
       display: none;
     }
 
-    /* Button Styles */
+    .header {
+      text-align: center;
+      margin-bottom: var(--spacing-lg);
+      position: relative;
+    }
+
+    .title {
+      font-family: 'Dancing Script', cursive;
+      font-size: 4.5rem;
+      background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: var(--spacing-sm);
+      text-shadow: 0 0 30px rgba(255, 107, 203, 0.3);
+      animation: titleGlow 3s ease-in-out infinite alternate;
+    }
+
+    .subtitle {
+      color: var(--color-text);
+      font-size: 1.2rem;
+      font-weight: 300;
+      max-width: 500px;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+
+    .heart {
+      color: var(--color-heart);
+      animation: heartbeat 1.5s ease-in-out infinite;
+      display: inline-block;
+    }
+
     .btn {
-      color: var(--color-primary);
-      text-shadow: 0 0 10px var(--color-primary-glow);
-      background: transparent;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
       padding: var(--spacing-md) var(--spacing-lg);
-      border: 2px solid var(--color-primary);
+      border: none;
       cursor: pointer;
-      font-family: inherit;
-      font-size: 24px;
-      text-transform: uppercase;
-      border-radius: 5px;
-      transition: background var(--transition-fast);
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      border-radius: var(--border-radius);
+      transition: all var(--transition-fast);
       display: none;
       touch-action: manipulation;
-      -webkit-tap-highlight-color: rgba(255, 51, 51, 0.3);
+      box-shadow: 0 10px 30px rgba(255, 107, 203, 0.4);
+      position: relative;
+      overflow: hidden;
+      min-width: 280px;
+      margin: var(--spacing-md) 0;
     }
 
     .btn.visible {
       display: block;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
     }
 
     .btn:hover,
     .btn:active,
     .btn:focus-visible {
-      background: rgba(255, 51, 51, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(255, 107, 203, 0.6);
       outline: none;
     }
 
-    .btn:focus-visible {
-      box-shadow: 0 0 0 3px rgba(255, 51, 51, 0.3);
+    .btn:hover::before {
+      left: 100%;
     }
 
-    /* Loading Bar */
+    .btn:focus-visible {
+      box-shadow: 0 0 0 4px rgba(255, 107, 203, 0.3);
+    }
+
     .loading-bar-container {
-      width: min(300px, 80%);
-      height: 4px;
-      background: #333;
+      width: min(400px, 90%);
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
       margin-top: var(--spacing-md);
-      border-radius: 2px;
+      border-radius: 4px;
       overflow: hidden;
       position: relative;
+      backdrop-filter: blur(10px);
     }
 
     .loading-bar {
@@ -121,27 +181,26 @@
       top: 0;
       width: 0%;
       height: 100%;
-      background: var(--color-secondary);
+      background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
       transition: width var(--transition-fast);
+      border-radius: 4px;
     }
 
     .loading-text {
-      color: var(--color-secondary);
-      margin-top: 10px;
-      font-size: 14px;
+      color: var(--color-text);
+      margin-top: var(--spacing-sm);
+      font-size: 1rem;
       text-align: center;
-      min-height: 20px;
+      min-height: 24px;
+      opacity: 0.8;
     }
 
-    /* Crosshair */
     .crosshair {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 6px;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.5);
-      border-radius: 50%;
+      width: 20px;
+      height: 20px;
       transform: translate(-50%, -50%);
       pointer-events: none;
       mix-blend-mode: difference;
@@ -150,26 +209,57 @@
       transition: opacity var(--transition-fast);
     }
 
+    .crosshair-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .crosshair-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: var(--color-primary);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px var(--color-primary-glow);
+    }
+
     .crosshair.visible {
       opacity: 1;
     }
 
-    /* Instructions */
     .instructions {
       color: var(--color-text);
-      font-size: 12px;
-      margin-top: var(--spacing-sm);
+      font-size: 0.9rem;
+      margin-top: var(--spacing-lg);
       text-align: center;
       max-width: 80%;
-      line-height: 1.4;
+      line-height: 1.6;
       display: none;
+      background: rgba(255, 255, 255, 0.1);
+      padding: var(--spacing-md);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
     }
 
     .instructions.visible {
       display: block;
+      animation: fadeIn var(--transition-normal);
     }
 
-    /* Mobile Controls */
+    kbd {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-family: monospace;
+      font-size: 0.9em;
+      color: var(--color-secondary);
+    }
+
     .mobile-controls {
       position: fixed;
       inset: 0;
@@ -187,35 +277,37 @@
       position: absolute;
       bottom: 100px;
       left: 40px;
-      width: 120px;
-      height: 120px;
+      width: 140px;
+      height: 140px;
       pointer-events: auto;
       touch-action: none;
     }
 
     .joystick-base {
       position: absolute;
-      width: 100px;
-      height: 100px;
+      width: 120px;
+      height: 120px;
       background: var(--color-control-bg);
       border-radius: 50%;
       border: 2px solid var(--color-control-border);
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      backdrop-filter: blur(10px);
     }
 
     .joystick-handle {
       position: absolute;
-      width: 50px;
-      height: 50px;
-      background: var(--color-control-handle);
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle at 30% 30%, var(--color-primary), var(--color-accent));
       border-radius: 50%;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       transition: transform 0.1s ease-out;
       will-change: transform;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
 
     .look-area {
@@ -228,7 +320,6 @@
       touch-action: none;
     }
 
-    /* Mobile UI Buttons */
     .mobile-ui {
       position: fixed;
       top: var(--spacing-md);
@@ -249,27 +340,28 @@
 
     .mobile-btn {
       pointer-events: auto;
-      padding: 10px var(--spacing-md);
-      background: rgba(0, 0, 0, 0.7);
+      padding: 12px var(--spacing-md);
+      background: rgba(255, 107, 203, 0.2);
+      backdrop-filter: blur(10px);
       color: white;
-      border: 1px solid var(--color-text-dark);
-      border-radius: 5px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: var(--border-radius);
       font-size: 14px;
       font-family: inherit;
       cursor: pointer;
       touch-action: manipulation;
-      transition: background var(--transition-fast);
+      transition: all var(--transition-fast);
       white-space: nowrap;
       -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
-      min-width: 80px;
+      min-width: 90px;
       min-height: 44px;
     }
 
     .mobile-btn:active {
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(255, 107, 203, 0.4);
+      transform: scale(0.95);
     }
 
-    /* Error Message */
     .error-message {
       color: var(--color-primary);
       text-align: center;
@@ -277,47 +369,60 @@
       max-width: 80%;
       line-height: 1.5;
       display: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
+      backdrop-filter: blur(10px);
     }
 
     .error-message.visible {
       display: block;
     }
 
-    /* Responsive Design */
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--color-secondary);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: var(--z-overlay);
+    }
+
     @media (max-width: 768px) {
+      .title {
+        font-size: 3.5rem;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+      }
+
       .btn {
-        padding: var(--spacing-sm) 30px;
-        font-size: 18px;
-        min-height: 50px;
+        font-size: 1.3rem;
+        min-width: 250px;
+        padding: var(--spacing-sm) var(--spacing-md);
       }
 
       .instructions {
-        font-size: 11px;
-        padding: 0 var(--spacing-md);
+        font-size: 0.8rem;
+        padding: var(--spacing-sm);
       }
 
-      .crosshair {
-        width: 8px;
-        height: 8px;
-      }
-    }
-
-    @media (max-width: 480px) {
       .joystick-area {
         bottom: 80px;
         left: 30px;
+        width: 120px;
+        height: 120px;
+      }
+
+      .joystick-base {
         width: 100px;
         height: 100px;
       }
 
-      .joystick-base {
-        width: 80px;
-        height: 80px;
-      }
-
       .joystick-handle {
-        width: 40px;
-        height: 40px;
+        width: 50px;
+        height: 50px;
       }
 
       .mobile-btn {
@@ -328,27 +433,70 @@
       }
     }
 
-    /* Performance Optimization */
-    .joystick-handle,
-    .crosshair {
-      backface-visibility: hidden;
-      transform-style: preserve-3d;
+    @media (max-width: 480px) {
+      .title {
+        font-size: 2.8rem;
+      }
+
+      .header {
+        margin-bottom: var(--spacing-md);
+      }
+
+      .btn {
+        font-size: 1.1rem;
+        min-width: 220px;
+      }
     }
 
-    /* Accessibility */
-    .visually-hidden {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border-width: 0;
+    @keyframes titleGlow {
+      0% {
+        text-shadow: 0 0 20px rgba(255, 107, 203, 0.3),
+          0 0 40px rgba(110, 231, 255, 0.2);
+      }
+
+      100% {
+        text-shadow: 0 0 30px rgba(255, 107, 203, 0.5),
+          0 0 60px rgba(110, 231, 255, 0.3),
+          0 0 80px rgba(199, 146, 234, 0.2);
+      }
     }
 
-    /* Loading Animation */
+    @keyframes heartbeat {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+      }
+
+      50% {
+        transform: translateY(-10px) scale(1.05);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @keyframes pulse {
 
       0%,
@@ -364,30 +512,60 @@
     .loading-text {
       animation: pulse 2s ease-in-out infinite;
     }
+
+    .joystick-handle,
+    .crosshair {
+      backface-visibility: hidden;
+      transform-style: preserve-3d;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
   </style>
 </head>
 
 <body>
   <div class="ui-container" id="uiContainer" role="dialog" aria-modal="true" aria-labelledby="loadingText">
-    <p class="loading-text" id="loadingText">Carregando recursos... 0%</p>
+    <div class="header">
+      <h1 class="title">Quarto da Yas</h1>
+      <p class="subtitle">
+        Uma experiência especial só para você! Explore este quarto virtual cheio de surpresas e carinho.
+        <!-- <span class="heart">♥</span> -->
+      </p>
+    </div>
+
+    <p class="loading-text" id="loadingText">Preparando magia para você... 0%</p>
     <div class="loading-bar-container" id="loadingBarContainer">
       <div class="loading-bar" id="loadingBar" role="progressbar" aria-valuenow="0" aria-valuemin="0"
         aria-valuemax="100"></div>
     </div>
 
-    <button class="btn" id="startBtn" aria-label="Entrar no ambiente 3D">ENTRAR NO QUARTO</button>
+    <button class="btn" id="startBtn" aria-label="Explorar o presente virtual">✨ EXPLORAR ✨</button>
 
     <p class="instructions" id="desktopInstructions">
-      <kbd>WASD</kbd>: Andar | <kbd>Mouse</kbd>: Olhar | <kbd>ESC</kbd>: Sair
+      <kbd>WASD</kbd>: Andar pelo quarto | <kbd>Mouse</kbd>: Olhar ao redor | <kbd>ESC</kbd>: Pausar
     </p>
     <p class="instructions" id="mobileInstructions">
-      Joystick: Andar | Toque direita: Olhar | Toque em ENTRAR para começar
+      Joystick: Andar | Toque na direita: Olhar ao redor | Toque em EXPLORAR para começar
     </p>
 
     <p class="error-message" id="errorMessage"></p>
   </div>
 
-  <div class="crosshair" id="crosshair" aria-hidden="true"></div>
+  <div class="crosshair" id="crosshair" aria-hidden="true">
+    <div class="crosshair-inner">
+      <div class="crosshair-dot"></div>
+    </div>
+  </div>
 
   <div class="mobile-controls" id="mobileControls" aria-label="Controles de movimento">
     <div class="joystick-area" id="joystickArea" role="slider" aria-label="Joystick de movimento">
@@ -398,7 +576,7 @@
   </div>
 
   <nav class="mobile-ui" id="mobileUI" aria-label="Controles da interface">
-    <button class="mobile-btn" id="exitBtn" aria-label="Sair da experiência">SAIR</button>
+    <button class="mobile-btn" id="exitBtn" aria-label="Sair da experiência">VOLTAR</button>
     <button class="mobile-btn" id="lookBtn" aria-label="Alternar controle de câmera">OLHAR: ON</button>
   </nav>
 
@@ -419,9 +597,6 @@
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-    // ============================================================================
-    // CONFIGURATION & CONSTANTS
-    // ============================================================================
     const CONFIG = Object.freeze({
       ROOM: {
         WIDTH: 5.2,
@@ -431,8 +606,8 @@
       PLAYER: {
         HEIGHT: 1.6,
         RADIUS: 0.5,
-        SPEED_DESKTOP: 6.0,
-        SPEED_MOBILE: 3.0
+        SPEED_DESKTOP: 12.0,
+        SPEED_MOBILE: 12.0
       },
       RENDERING: {
         FOV: 65,
@@ -468,9 +643,6 @@
       ])
     });
 
-    // ============================================================================
-    // DEVICE DETECTION
-    // ============================================================================
     class DeviceDetector {
       static isMobile() {
         return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -488,9 +660,6 @@
       }
     }
 
-    // ============================================================================
-    // UI MANAGER
-    // ============================================================================
     class UIManager {
       constructor() {
         this.elements = {
@@ -522,21 +691,39 @@
         instructionsElement.classList.add('visible');
       }
 
+      createSparkles() {
+        for (let i = 0; i < 20; i++) {
+          const sparkle = document.createElement('div');
+          sparkle.className = 'sparkle';
+          sparkle.style.left = `${Math.random() * 100}vw`;
+          sparkle.style.top = `${Math.random() * 100}vh`;
+          sparkle.style.opacity = Math.random() * 0.5 + 0.5;
+          sparkle.style.animation = `pulse ${Math.random() * 3 + 2}s infinite`;
+          document.body.appendChild(sparkle);
+        }
+      }
+
       updateLoadingProgress(percent) {
         this.elements.loadingBar.style.width = `${percent}%`;
         this.elements.loadingBar.setAttribute('aria-valuenow', percent);
-        this.elements.loadingText.textContent = `Carregando modelos... ${percent}%`;
+        const messages = [
+          "Preparando magia para você...",
+          "Criando momentos especiais...",
+          "Decorando com carinho...",
+          "Quase pronto para você explorar!"
+        ];
+        const messageIndex = Math.min(Math.floor(percent / 25), 3);
+        this.elements.loadingText.textContent = `${messages[messageIndex]} ${percent}%`;
       }
 
       showStartButton() {
-        this.elements.loadingText.textContent = "Carregamento Completo!";
+        this.elements.loadingText.textContent = "Tudo pronto!";
         this.elements.loadingBarContainer.style.display = 'none';
         this.elements.startBtn.classList.add('visible');
         this.elements.startBtn.style.display = 'block';
         this.elements.startBtn.style.opacity = '1';
-        this.announce('Carregamento completo. Toque no botão para iniciar.');
+        this.announce('Carregamento completo! Clique para explorar seu presente especial.');
 
-        // Focar no botão para melhor acessibilidade
         setTimeout(() => {
           this.elements.startBtn.focus();
         }, 100);
@@ -549,7 +736,7 @@
         }, 500);
       }
 
-      showUI(buttonText = "VOLTAR AO QUARTO") {
+      showUI(buttonText = "✨ CONTINUAR EXPLORANDO ✨") {
         this.elements.uiContainer.classList.remove('removed');
         setTimeout(() => {
           this.elements.uiContainer.classList.remove('hidden');
@@ -591,9 +778,6 @@
       }
     }
 
-    // ============================================================================
-    // INPUT MANAGER
-    // ============================================================================
     class InputManager {
       constructor(isMobile) {
         this.isMobile = isMobile;
@@ -604,7 +788,6 @@
           right: false
         };
 
-        // Joystick state
         this.joystick = {
           active: false,
           touchId: null,
@@ -612,7 +795,6 @@
           value: { x: 0, y: 0 }
         };
 
-        // Look state
         this.look = {
           active: false,
           touchId: null,
@@ -654,12 +836,10 @@
       }
 
       setupMobileControls(joystickArea, lookArea, joystickHandle) {
-        // Joystick controls
         joystickArea.addEventListener('touchstart', (e) => this.handleJoystickStart(e));
         joystickArea.addEventListener('touchmove', (e) => this.handleJoystickMove(e, joystickHandle));
         joystickArea.addEventListener('touchend', (e) => this.handleJoystickEnd(e, joystickHandle));
 
-        // Look controls
         lookArea.addEventListener('touchstart', (e) => this.handleLookStart(e));
         lookArea.addEventListener('touchmove', (e) => this.handleLookMove(e));
         lookArea.addEventListener('touchend', (e) => this.handleLookEnd(e));
@@ -700,10 +880,8 @@
               this.joystick.value.y = deltaY;
             }
 
-            // Update visual
             handle.style.transform = `translate(${this.joystick.value.x}px, ${this.joystick.value.y}px)`;
 
-            // Update move state
             const threshold = CONFIG.CONTROLS.JOYSTICK_THRESHOLD;
             this.moveState.forward = this.joystick.value.y < -threshold;
             this.moveState.backward = this.joystick.value.y > threshold;
@@ -790,9 +968,6 @@
       }
     }
 
-    // ============================================================================
-    // SCENE MANAGER
-    // ============================================================================
     class SceneManager {
       constructor(isMobile) {
         this.isMobile = isMobile;
@@ -804,12 +979,10 @@
       }
 
       initialize() {
-        // Scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x100505);
-        this.scene.fog = new THREE.FogExp2(0x100505, 0.08);
+        this.scene.background = new THREE.Color(0x1a0b2e);
+        this.scene.fog = new THREE.FogExp2(0x1a0b2e, 0.08);
 
-        // Camera
         this.camera = new THREE.PerspectiveCamera(
           CONFIG.RENDERING.FOV,
           window.innerWidth / window.innerHeight,
@@ -819,7 +992,6 @@
         this.camera.position.set(-1.0, CONFIG.PLAYER.HEIGHT, 2.0);
         this.camera.rotation.y = -0.5;
 
-        // Renderer
         this.renderer = new THREE.WebGLRenderer({
           antialias: !this.isMobile,
           powerPreference: "high-performance",
@@ -842,13 +1014,9 @@
 
         document.body.appendChild(this.renderer.domElement);
 
-        // Lights
         this.setupLights();
-
-        // Room
         this.createRoom();
 
-        // Window resize
         window.addEventListener('resize', () => this.onWindowResize(), { passive: true });
       }
 
@@ -860,12 +1028,11 @@
         const ambient = new THREE.AmbientLight(0x404040, ambientIntensity);
         this.scene.add(ambient);
 
-        // Directional light
         const dirIntensity = this.isMobile
           ? CONFIG.LIGHTING.DIRECTIONAL_INTENSITY_MOBILE
           : CONFIG.LIGHTING.DIRECTIONAL_INTENSITY_DESKTOP;
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, dirIntensity);
+        const dirLight = new THREE.DirectionalLight(0xfff0f5, dirIntensity);
         dirLight.position.set(0, 10, 0);
 
         if (!this.isMobile) {
@@ -881,12 +1048,11 @@
 
         this.scene.add(dirLight);
 
-        // Point light (bulb)
         const pointIntensity = this.isMobile
           ? CONFIG.LIGHTING.POINT_INTENSITY_MOBILE
           : CONFIG.LIGHTING.POINT_INTENSITY_DESKTOP;
 
-        const bulbLight = new THREE.PointLight(0xffaa00, pointIntensity, 10);
+        const bulbLight = new THREE.PointLight(0xffccf9, pointIntensity, 10);
         bulbLight.position.set(0, 2.8, 0);
         bulbLight.decay = 2;
         this.scene.add(bulbLight);
@@ -897,25 +1063,23 @@
         const roomGroup = new THREE.Group();
 
         const floorMat = new THREE.MeshStandardMaterial({
-          color: 0x333333,
+          color: 0x2d1b69,
           roughness: 0.8,
           metalness: 0.2
         });
 
         const wallMat = new THREE.MeshStandardMaterial({
-          color: 0xcccccc,
+          color: 0xd6c6ff,
           roughness: 0.9,
           metalness: 0.0,
           side: THREE.DoubleSide
         });
 
-        // Floor
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(WIDTH, DEPTH), floorMat);
         floor.rotation.x = -Math.PI / 2;
         if (!this.isMobile) floor.receiveShadow = true;
         roomGroup.add(floor);
 
-        // Walls
         const walls = [
           { w: WIDTH, h: HEIGHT, x: 0, y: HEIGHT / 2, z: -DEPTH / 2, rotY: 0 },
           { w: WIDTH, h: HEIGHT, x: 0, y: HEIGHT / 2, z: DEPTH / 2, rotY: Math.PI },
@@ -960,9 +1124,6 @@
       }
     }
 
-    // ============================================================================
-    // ASSET LOADER
-    // ============================================================================
     class AssetLoader {
       constructor(scene, isMobile, onProgress, onComplete, onError) {
         this.scene = scene;
@@ -1031,9 +1192,6 @@
       }
     }
 
-    // ============================================================================
-    // PLAYER CONTROLLER
-    // ============================================================================
     class PlayerController {
       constructor(camera, isMobile, controls = null) {
         this.camera = camera;
@@ -1049,11 +1207,9 @@
         const time = performance.now();
         const delta = (time - this.prevTime) / 1000;
 
-        // Damping
         this.velocity.x -= this.velocity.x * CONFIG.CONTROLS.DAMPING_FACTOR * delta;
         this.velocity.z -= this.velocity.z * CONFIG.CONTROLS.DAMPING_FACTOR * delta;
 
-        // Calculate direction
         this.direction.z = Number(moveState.forward) - Number(moveState.backward);
         this.direction.x = Number(moveState.right) - Number(moveState.left);
         this.direction.normalize();
@@ -1067,7 +1223,6 @@
           this.velocity.x -= this.direction.x * speed * delta;
         }
 
-        // Move player
         if (!this.isMobile && this.controls) {
           this.controls.moveRight(-this.velocity.x * delta);
           this.controls.moveForward(-this.velocity.z * delta);
@@ -1108,9 +1263,6 @@
       }
     }
 
-    // ============================================================================
-    // MAIN APPLICATION
-    // ============================================================================
     class Application {
       constructor() {
         this.isMobile = DeviceDetector.isMobile();
@@ -1126,20 +1278,14 @@
       }
 
       async init() {
-        // Check WebGL support
         if (!DeviceDetector.supportsWebGL()) {
           this.showError('WebGL não é suportado neste navegador.');
           return;
         }
 
         try {
-          // Initialize UI
           this.ui = new UIManager();
-
-          // Initialize Scene
           this.scene = new SceneManager(this.isMobile);
-
-          // Initialize Input
           this.input = new InputManager(this.isMobile);
 
           if (!this.isMobile) {
@@ -1152,30 +1298,23 @@
             this.setupMobileControls();
           }
 
-          // Initialize Player
           this.player = new PlayerController(
             this.scene.getCamera(),
             this.isMobile,
             this.controls
           );
 
-          // Setup look callback
           this.input.on('look', ({ deltaX, deltaY }) => {
             this.player.updateLook(deltaX, deltaY);
           });
 
-          // Load assets
           this.loadAssets();
-
-          // Start animation loop
           this.animate();
-
-          // Prevent unwanted behaviors
           this.setupEventListeners();
 
         } catch (error) {
-          console.error('Initialization error:', error);
-          this.showError('Erro ao inicializar a aplicação.');
+          console.error('Erro na inicialização:', error);
+          this.showError('Erro ao preparar seu presente especial.');
         }
       }
 
@@ -1196,6 +1335,7 @@
 
         this.ui.elements.startBtn.addEventListener('click', () => {
           this.controls.lock();
+          this.ui.announce('Explorando o presente especial para Yas!');
         });
 
         this.controls.addEventListener('lock', () => {
@@ -1206,7 +1346,7 @@
 
         this.controls.addEventListener('unlock', () => {
           this.isRunning = false;
-          this.ui.showUI('VOLTAR AO JOGO');
+          this.ui.showUI('✨ CONTINUAR EXPLORANDO ✨');
           this.ui.hideCrosshair();
         });
       }
@@ -1218,12 +1358,10 @@
 
         this.input.setupMobileControls(joystickArea, lookArea, joystickHandle);
 
-        // Evento de toque para mobile
         this.ui.elements.startBtn.addEventListener('touchstart', (e) => {
           e.preventDefault();
           e.stopPropagation();
 
-          // Adicionar feedback visual
           this.ui.elements.startBtn.style.transform = 'scale(0.95)';
 
           setTimeout(() => {
@@ -1232,11 +1370,11 @@
             this.ui.showCrosshair();
             this.ui.showMobileControls();
             this.ui.elements.startBtn.style.transform = '';
+            this.ui.announce('Explorando o presente especial para Yas!');
           }, 150);
 
         }, { passive: false });
 
-        // Evento de clique como fallback
         this.ui.elements.startBtn.addEventListener('click', (e) => {
           if (this.isMobile) {
             e.preventDefault();
@@ -1252,7 +1390,7 @@
         this.ui.elements.exitBtn.addEventListener('touchstart', (e) => {
           e.preventDefault();
           this.isRunning = false;
-          this.ui.showUI('VOLTAR AO QUARTO');
+          this.ui.showUI('✨ VOLTAR AO PRESENTE ✨');
           this.ui.hideCrosshair();
           this.ui.hideMobileControls();
         });
@@ -1261,23 +1399,19 @@
           e.preventDefault();
           const enabled = this.input.toggleLookEnabled();
           this.ui.updateLookButtonState(enabled);
+          this.ui.announce(`Controle de câmera ${enabled ? 'ativado' : 'desativado'}`);
         });
       }
 
       setupEventListeners() {
-        // Prevent context menu
         document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // Prevent touch zoom
         document.addEventListener('gesturestart', (e) => e.preventDefault());
         document.addEventListener('gesturechange', (e) => e.preventDefault());
 
-        // Prevent double-tap zoom on canvas only, not on buttons
         document.addEventListener('touchstart', (e) => {
           if (e.target.tagName === 'CANVAS') {
             e.preventDefault();
           }
-          // Allow default behavior for buttons
         }, { passive: false });
       }
 
@@ -1297,9 +1431,6 @@
       }
     }
 
-    // ============================================================================
-    // INITIALIZE APPLICATION
-    // ============================================================================
     const app = new Application();
   </script>
 </body>
