@@ -85,6 +85,8 @@
       border-radius: 5px;
       transition: background var(--transition-fast);
       display: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(255, 51, 51, 0.3);
     }
 
     .btn.visible {
@@ -258,6 +260,9 @@
       touch-action: manipulation;
       transition: background var(--transition-fast);
       white-space: nowrap;
+      -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+      min-width: 80px;
+      min-height: 44px;
     }
 
     .mobile-btn:active {
@@ -283,6 +288,7 @@
       .btn {
         padding: var(--spacing-sm) 30px;
         font-size: 18px;
+        min-height: 50px;
       }
 
       .instructions {
@@ -317,6 +323,8 @@
       .mobile-btn {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: 12px;
+        min-width: 70px;
+        min-height: 40px;
       }
     }
 
@@ -524,7 +532,14 @@
         this.elements.loadingText.textContent = "Carregamento Completo!";
         this.elements.loadingBarContainer.style.display = 'none';
         this.elements.startBtn.classList.add('visible');
-        this.announce('Carregamento completo. Pressione o botão para iniciar.');
+        this.elements.startBtn.style.display = 'block';
+        this.elements.startBtn.style.opacity = '1';
+        this.announce('Carregamento completo. Toque no botão para iniciar.');
+
+        // Focar no botão para melhor acessibilidade
+        setTimeout(() => {
+          this.elements.startBtn.focus();
+        }, 100);
       }
 
       hideUI() {
@@ -540,6 +555,7 @@
           this.elements.uiContainer.classList.remove('hidden');
         }, 10);
         this.elements.startBtn.textContent = buttonText;
+        this.elements.startBtn.style.display = 'block';
       }
 
       showCrosshair() {
@@ -1202,21 +1218,47 @@
 
         this.input.setupMobileControls(joystickArea, lookArea, joystickHandle);
 
-        this.ui.elements.startBtn.addEventListener('click', () => {
-          this.isRunning = true;
-          this.ui.hideUI();
-          this.ui.showCrosshair();
-          this.ui.showMobileControls();
+        // Evento de toque para mobile
+        this.ui.elements.startBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Adicionar feedback visual
+          this.ui.elements.startBtn.style.transform = 'scale(0.95)';
+
+          setTimeout(() => {
+            this.isRunning = true;
+            this.ui.hideUI();
+            this.ui.showCrosshair();
+            this.ui.showMobileControls();
+            this.ui.elements.startBtn.style.transform = '';
+          }, 150);
+
+        }, { passive: false });
+
+        // Evento de clique como fallback
+        this.ui.elements.startBtn.addEventListener('click', (e) => {
+          if (this.isMobile) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.isRunning = true;
+            this.ui.hideUI();
+            this.ui.showCrosshair();
+            this.ui.showMobileControls();
+          }
         });
 
-        this.ui.elements.exitBtn.addEventListener('click', () => {
+        this.ui.elements.exitBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
           this.isRunning = false;
           this.ui.showUI('VOLTAR AO QUARTO');
           this.ui.hideCrosshair();
           this.ui.hideMobileControls();
         });
 
-        this.ui.elements.lookBtn.addEventListener('click', () => {
+        this.ui.elements.lookBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
           const enabled = this.input.toggleLookEnabled();
           this.ui.updateLookButtonState(enabled);
         });
@@ -1230,11 +1272,12 @@
         document.addEventListener('gesturestart', (e) => e.preventDefault());
         document.addEventListener('gesturechange', (e) => e.preventDefault());
 
-        // Prevent double-tap zoom on buttons
+        // Prevent double-tap zoom on canvas only, not on buttons
         document.addEventListener('touchstart', (e) => {
-          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'CANVAS') {
+          if (e.target.tagName === 'CANVAS') {
             e.preventDefault();
           }
+          // Allow default behavior for buttons
         }, { passive: false });
       }
 
